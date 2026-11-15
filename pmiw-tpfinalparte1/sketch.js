@@ -1,206 +1,224 @@
-// ===================== VARIABLES GLOBALES =====================
 
-//link al video:https://youtu.be/jlMrOCoOq2c
+//   PARTE DE IVANN: la lógica del juego    
+//video parte 1
+ //https://www.youtube.com/watch?v=utnrC11QaxM
+       
+//   escena, las opciones, los clicks y cómo se reinicia todo.       
 
-let imgMenu;           // Imagen de fondo del menú
-let fuenteTitulo;      // Fuente Rye para títulos
-let fuenteBotones;     // Fuente Oswald para textos
-let sonidoViento;      // Sonido de fondo del viento
-let sonidoTeclado;     // Sonido al pasar por los botones
-let sonidoLluvia;      // Sonido de lluvia en la escena de la calle
-let botonAnterior = -1; // Para que el sonido no se repita en cada frame
-let pantallaActual = "menu"; // Estado de la pantalla
-let imagenesRetratos = {}; // Objeto para guardar las imágenes de los retratos
-let imagenCajon;       // Imagen del cajón abierto
-let imagenHoja;        // Imagen de la carta
-let vistaObjeto = null; // Indica qué objeto estamos mirando de cerca
+
+// ============== VARIABLES GLOBALES ===
+
+
+let imgMenu;           
+let fuenteTitulo;    
+let fuenteBotones;     
+let sonidoViento;      
+let sonidoTeclado;     
+let sonidoLluvia;      
+let botonAnterior = -1; 
+let pantallaActual = "menu"; 
+
+// Retratos de los personajes (uno por variable)
+
+let retratoPolicia;
+let retratoJohn;
+let retratoGuardia;
+let retratoLaura;
+let retratoMartin;
+
+let imagenCajon;      
+let imagenHoja;        
+let imagenSilla;       
+let imagenCajaFuerte;  
+let vistaObjeto = "";  
 
 // Para saber qué objetos de la escena 3 ya fueron revisados
-let objetosRevisados = { cajon: false, silla: false, cajafuerte: false }; 
 
-// Vistas simples (silla y caja fuerte)
-let vistasSimples = {
-  silla: { imagen: null, texto: "Hay una mancha oscura en el respaldo... podría ser sangre. Habría que analizarla." },
-  cajafuerte: { imagen: null, texto: "Al parecer no quisieron abrir la caja fuerte... o no sabían el código." }
-};
+let revisadoCajon = false;
+let revisadoSilla = false;
+let revisadoCajaFuerte = false;
 
-// Botones del menú principal
-let botonesMenu = [
-  { texto: "INICIAR",     x: 40, y: 240, destino: "intro" },
-  { texto: "DESCRIPCIÓN", x: 40, y: 285, destino: "descripcion" },
-  { texto: "CRÉDITOS",    x: 40, y: 330, destino: "creditos" },
-  { texto: "SALIR",       x: 40, y: 375, destino: "salir" }
-];
+// Para saber a quién ya interrogamos (así el interrogatorio no da vueltas en círculo)
+
+let lauraInterrogada = false;
+let martinInterrogado = false;
+
+// Textos de las vistas simples
+let textoSilla = "Hay una mancha oscura en el respaldo... podría ser sangre. Habría que analizarla.";
+let textoCajaFuerte = "Al parecer no quisieron abrir la caja fuerte... o no sabían el código.";
+
+// Botones del menú principal (arreglos paralelos: la posición 0 de cada uno es el primer botón)
+
+let menuTexto = ["INICIAR", "DESCRIPCIÓN", "CRÉDITOS", "SALIR"];
+let menuX = [40, 40, 40, 40];
+let menuY = [240, 285, 330, 375];
+let menuDestino = ["intro", "descripcion", "creditos", "salir"];
 
 // Botón de volver para pantallas secundarias
-let botonVolver = [{ texto: "◀ VOLVER", x: 40, y: 390, destino: "menu" }]; 
+
+let volverTexto = ["◀ VOLVER"];
+let volverX = [40];
+let volverY = [390];
+let volverDestino = ["menu"];
 
 // Texto de la escena introductoria
+
 let textoIntro = "Nueva York, 1954. Una madrugada de lluvia. John Davis recibe un llamado: Ricardo Alonso, dueño de una inmobiliaria, apareció muerto en su oficina. Un presunto suicidio que no termina de cerrar.";
-let letrasIntro = 0; 
+let letrasIntro = 0;
 
-// Arreglo para cargar las imágenes de las escenas del juego
-let imagenesEscenas = [];
+// ===== DATOS DE LAS ESCENAS ============
+// Cada dato de la escena i está en la posición i de cada arreglo.
 
-// Escenas del juego (Arreglo de Objetos con ramificaciones)
-let escenas = [
-  { // 0
-    archivo: 'escenas/pantalla1.png',
-    texto: "Sos John Davis. Llegás bajo la lluvia al edificio donde apareció muerto Ricardo Alonso, un empresario. Un policía te espera en la puerta.",
-    tieneLluvia: true,
-    hablante: "",
-    opciones: [ { texto: "Hablar con el policía", x: 520, y: 160, siguiente: 1 } ]
-  },
-  { // 1
-    archivo: 'escenas/policia.png',
-    texto: "El cuerpo está en el noveno piso, detective. Ya está todo despejado, puede subir a investigar.",
-    tieneLluvia: true,
-    hablante: "policia",
-    opciones: [ { texto: "Entrar al edificio", x: 235, y: 390, siguiente: 2 } ]
-  },
-  { // 2
-    archivo: 'escenas/abriendopuerta.png',
-    texto: "Llegás a la puerta de la oficina de Ricardo Alonso. Está entreabierta.",
-    tieneLluvia: false,
-    hablante: "",
-    opciones: [ { texto: "Abrir la puerta", x: 35, y: 390, siguiente: 3 } ]
-  },
-  { // 3
-    archivo: 'escenas/pantalla2.png',
-    texto: "Entrás a la oficina. La policía ya marcó la escena: el contorno de tiza en el piso señala dónde encontraron a Ricardo Alonso. Carteles numerados marcan distintos puntos de interés.",
-    tieneLluvia: false,
-    hablante: "",
-    opciones: [], 
-    objetos: [
-      { texto: "Revisar escritorio", x: 100, y: 200, abre: "cajon" },
-      { texto: "Revisar la silla", x: 550, y: 260, abre: "silla" },
-      { texto: "Revisar la caja fuerte", x: 610, y: 180, abre: "cajafuerte" }
-    ]
-  },
-  { // 4
-    archivo: 'escenas/guardia.png',
-    texto: "Bajás a la recepción a hablar con el guardia nocturno. Es el único que estuvo en el edificio toda la noche.",
-    tieneLluvia: false,
-    hablante: "",
-    opciones: [
-      { texto: "Preguntarle si vio algo esa noche", x: 35, y: 390, siguiente: 5 }
-    ]
-  },
-  { // 5
-    archivo: 'escenas/guardia.png',
-    texto: "¿Usted no vio nada, señor? Alguien entrando o saliendo esa noche, lo que sea.",
-    tieneLluvia: false,
-    hablante: "johndavis",
-    opciones: [
-      { texto: "Intimidar", x: 235, y: 370, siguiente: 6 },
-      { texto: "Preguntarle con calma", x: 235, y: 400, siguiente: 7 }
-    ]
-  },
-  { // 6 - Guardia asustado (tras intimidar) -> Lleva a Laura
-    archivo: 'escenas/guardia.png',
-    texto: "¡Está bien, habla! Vi a Laura discutiendo con Ricardo horas antes de que se escuchara el disparo...",
-    tieneLluvia: false,
-    hablante: "guardia",
-    opciones: [
-      { texto: "Ir a interrogar a Laura", x: 235, y: 390, siguiente: 8 }
-    ]
-  },
-  { // 7 - Guardia calmo (tras preguntar con calma) -> Lleva a Martín
-    archivo: 'escenas/guardia.png',
-    texto: "Bueno, mire... vi a Martín salir con apuro de la oficina esa misma noche, parecía muy alterado.",
-    tieneLluvia: false,
-    hablante: "guardia",
-    opciones: [
-      { texto: "Ir a interrogar a Martín", x: 235, y: 390, siguiente: 10 }
-    ]
-  },
-  { // 8 - Interrogatorio Laura (Diálogo 1)
-    archivo: 'escenas/laura.png',
-    texto: "Laura, ¿Cuándo fue la última vez que lo vio al señor Ricardo?",
-    tieneLluvia: false,
-    hablante: "johndavis",
-    opciones: [
-      { texto: "Siguiente", x: 235, y: 390, siguiente: 9 }
-    ]
-  },
-  { // 9 - Interrogatorio Laura (Diálogo 2)
-    archivo: 'escenas/laura.png',
-    texto: "Vi a Ricardo por última vez en la oficina de Martín, hablando de negocios.",
-    tieneLluvia: false,
-    hablante: "laura",
-    opciones: [
-      { texto: "Inspeccionar placard de Laura", x: 235, y: 370, siguiente: 12 },
-      { texto: "Interrogar a Martín", x: 235, y: 400, siguiente: 10 }
-    ]
-  },
-  { // 10 - Interrogatorio Martín (Diálogo 1)
-    archivo: 'escenas/martin.png',
-    texto: "Martín, ¿Qué sabe usted del señor Ricardo?",
-    tieneLluvia: false,
-    hablante: "johndavis",
-    opciones: [
-      { texto: "Siguiente", x: 235, y: 390, siguiente: 11 }
-    ]
-  },
-  { // 11 - Interrogatorio Martín (Diálogo 2)
-    archivo: 'escenas/martin.png',
-    texto: "Fui el último en ver a Ricardo. Pidió una reunión para cerrar unos asuntos laborales.",
-    tieneLluvia: false,
-    hablante: "martin",
-    opciones: [
-      { texto: "Revisar auto de Martín", x: 235, y: 370, siguiente: 13 },
-      { texto: "Interrogar a Laura", x: 235, y: 400, siguiente: 8 }
-    ]
-  },
-  { // 12 - Placard de Laura
-    archivo: 'escenas/placar.png',
-    texto: "El pañuelo parece ser de Laura.",
-    tieneLluvia: false,
-    hablante: "johndavis",
-    opciones: [
-      { texto: "Acusar a Laura", x: 235, y: 400, siguiente: 14 },
-      { texto: "Interrogar a Martín", x: 360, y: 400, siguiente: 10 },
-      { texto: "Esperar", x: 520, y: 400, siguiente: 15 }
-    ]
-  },
-  { // 13 - Baúl del auto de Martín
-    archivo: 'escenas/baul.jpeg',
-    texto: "Encontrás el baúl de Martín con el pañuelo rojo con sangre.",
-    tieneLluvia: false,
-    hablante: "johndavis",
-    opciones: [
-      { texto: "Acusar a Martín", x: 235, y: 370, siguiente: 16 },
-      { texto: "Acusar a Laura", x: 235, y: 400, siguiente: 14 }
-    ]
-  },
-  { // 14 - FINAL MALO (Acusar a Laura)
-    archivo: 'escenas/finalmalo.jpeg',
-    texto: "Acusaste a Laura de que ella mató a Ricardo Alonso.",
-    tieneLluvia: false,
-    hablante: "",
-    opciones: [ { texto: "Volver al menú principal", x: 235, y: 390, siguiente: 0 } ]
-  },
-  { // 15 - FINAL ALTERNATIVO (Esperar en el placard)
-    archivo: 'escenas/finalalternativo.jpeg',
-    texto: "Martín se escapó y al final él era el asesino.",
-    tieneLluvia: false,
-    hablante: "",
-    opciones: [ { texto: "Volver al menú principal", x: 235, y: 390, siguiente: 0 } ]
-  },
-  { // 16 - FINAL BUENO (Acusar a Martín)
-    archivo: 'escenas/finalbueno.jpeg',
-    texto: "Acusaste a Martín de haber asesinado a Ricardo Alonso.",
-    tieneLluvia: false,
-    hablante: "",
-    opciones: [ { texto: "Volver al menú principal", x: 235, y: 390, siguiente: 0 } ]
-  }
+// Imagen de fondo de cada escena
+
+let archivosEscenas = [
+  'escenas/pantalla1.png',        
+  'escenas/policia.png',          
+  'escenas/abriendopuerta.png',   
+  'escenas/pantalla2.png',        
+  'escenas/guardia.png',          
+  'escenas/guardia.png',          
+  'escenas/guardia.png',          
+  'escenas/guardia.png',          
+  'escenas/laura.png',            
+  'escenas/laura.png',            
+  'escenas/martin.png',           
+  'escenas/martin.png',           
+  'escenas/placar.png',          
+  'escenas/baul.jpeg',            
+  'escenas/finalmalo.jpeg',       
+  'escenas/finalalternativo.jpeg',
+  'escenas/finalbueno.jpeg'       
 ];
 
-let escenaActual = 0;   
-let letrasMostradas = 0; 
+// Texto que se escribe en cada escena
+
+let textosEscenas = [
+  "Sos John Davis. Llegás bajo la lluvia al edificio donde apareció muerto Ricardo Alonso, un empresario. Un policía te espera en la puerta.", 
+  "El cuerpo está en el noveno piso, detective. Ya está todo despejado, puede subir a investigar.",                                          
+  "Llegás a la puerta de la oficina de Ricardo Alonso. Está entreabierta.",                                                                
+  "Entrás a la oficina. La policía ya marcó la escena: el contorno de tiza en el piso señala dónde encontraron a Ricardo Alonso. Carteles numerados marcan distintos puntos de interés.", 
+  "Bajás a la recepción a hablar con el guardia nocturno. Es el único que estuvo en el edificio toda la noche.",                            
+  "¿Usted no vio nada, señor? Alguien entrando o saliendo esa noche, lo que sea.",                                                           
+  "¡Está bien, habla! Vi a Laura discutiendo con Ricardo horas antes de que se escuchara el disparo...",                                   
+  "Bueno, mire... vi a Martín salir con apuro de la oficina esa misma noche, parecía muy alterado.",                                         
+  "Laura, ¿Cuándo fue la última vez que lo vio al señor Ricardo?",                                                                         
+  "Vi a Ricardo por última vez en la oficina de Martín, hablando de negocios.",                                                              
+  "Martín, ¿Qué sabe usted del señor Ricardo?",                                                                                              
+  "Fui el último en ver a Ricardo. Pidió una reunión para cerrar unos asuntos laborales.",                                                   
+  "El pañuelo parece ser de Laura.",                                                                                                         
+  "Encontrás el baúl de Martín con el pañuelo rojo con sangre.",                                                                             
+  "Acusaste a Laura de que ella mató a Ricardo Alonso.",                                                                                     
+  "Martín se escapó y al final él era el asesino.",                                                                                          
+  "Acusaste a Martín de haber asesinado a Ricardo Alonso."                                                                                   
+];
+
+// ¿Suena la lluvia en esa escena?
+
+
+let lluviaEscenas = [
+  true,  
+  true,  
+  false, 
+  false, 
+  false, 
+  false, 
+  false, 
+  false, 
+  false, 
+  false, 
+  false, 
+  false, 
+  false, 
+  false, 
+  false, 
+  false, 
+  false  
+];
+
+   // Quién habla en cada escena ( nadie, no se dibuja retrato)
+
+
+let hablantesEscenas = [
+  "",         
+  "policia",   
+  "",          
+  "",          
+  "",          
+  "johndavis", 
+  "guardia",   
+  "guardia",   
+  "johndavis", 
+  "laura",     
+  "johndavis", 
+  "martin",    
+  "johndavis", 
+  "johndavis", 
+  "",          
+  "",         
+  ""          
+];
+
+// Arreglo para guardar las imágenes de fondo de las escenas
+
+let imagenesEscenas = [];
+
+// <<<< OPCIONES (botones de elegir) <<<<
+
+
+// La opción número k está en la posición k de los cinco arreglos siguientes.
+
+// opcionEscena[k] dice en qué escena aparece, y opcionSiguiente[k] a qué escena lleva.
+
+let opcionEscena = [0, 1, 2, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 11, 12, 12, 12, 13, 13, 14, 15, 16];
+let opcionTexto = [
+  "Hablar con el policía",             // escena 0
+  "Entrar al edificio",                // escena 1
+  "Abrir la puerta",                   // escena 2
+  "Preguntarle si vio algo esa noche", // escena 4
+  "Intimidar",                         // escena 5
+  "Preguntarle con calma",             // escena 5
+  "Ir a interrogar a Laura",           // escena 6
+  "Ir a interrogar a Martín",          // escena 7
+  "Siguiente",                         // escena 8
+  "Inspeccionar placard de Laura",     // escena 9
+  "Interrogar a Martín",               // escena 9
+  "Siguiente",                         // escena 10
+  "Revisar auto de Martín",            // escena 11
+  "Interrogar a Laura",                // escena 11
+  "Acusar a Laura",                    // escena 12
+  "Interrogar a Martín",               // escena 12
+  "Esperar",                           // escena 12
+  "Acusar a Martín",                   // escena 13
+  "Acusar a Laura",                    // escena 13
+  "Volver al menú principal",          // escena 14
+  "Volver al menú principal",          // escena 15
+  "Volver al menú principal"           // escena 16
+];
+let opcionX = [520, 235, 35, 35, 235, 235, 235, 235, 235, 235, 235, 235, 235, 235, 235, 360, 520, 235, 235, 235, 235, 235];
+let opcionY = [160, 390, 390, 390, 370, 400, 390, 390, 390, 370, 400, 390, 370, 400, 400, 400, 400, 370, 400, 390, 390, 390];
+let opcionSiguiente = [1, 2, 3, 5, 6, 7, 8, 10, 9, 12, 10, 11, 13, 8, 14, 10, 15, 16, 14, 0, 0, 0];
+
+// <<<< OBJETOS PARA REVISAR (escena 3) <<<<
+
+    // El objeto número k está en la posición k de los cuatro arreglos.
+
+
+
+let objetoTexto = ["Revisar escritorio", "Revisar la silla", "Revisar la caja fuerte"];
+let objetoX = [100, 550, 610];
+let objetoY = [200, 260, 180];
+let objetoAbre = ["cajon", "silla", "cajafuerte"];
+
+let escenaActual = 0;
+let letrasMostradas = 0;
+
+// ====== PRELOAD Y SETUP ==========
 
 function preload() {
-  // Carga de imágenes principales y fuentes
+
+        // Carga de imágenes principales y fuentes
+
   imgMenu = loadImage('escenas/menuinicial.png');
   fuenteTitulo = loadFont('fuentes/Rye-Regular.ttf');
   fuenteBotones = loadFont('fuentes/Oswald-VariableFont_wght.ttf');
@@ -209,21 +227,24 @@ function preload() {
   sonidoLluvia = loadSound('sonidos/lluvia.mp3');
 
   // Retratos
-  imagenesRetratos["policia"] = loadImage('escenas/policiamsj.png');
-  imagenesRetratos["johndavis"] = loadImage('escenas/john.png');
-  imagenesRetratos["guardia"] = loadImage('escenas/guardiamsj.png');
-  imagenesRetratos["laura"] = loadImage('escenas/lauramsj.png');
-  imagenesRetratos["martin"] = loadImage('escenas/martinmsj.png');
+  retratoPolicia = loadImage('escenas/policiamsj.png');
+  retratoJohn = loadImage('escenas/john.png');
+  retratoGuardia = loadImage('escenas/guardiamsj.png');
+  retratoLaura = loadImage('escenas/lauramsj.png');
+  retratoMartin = loadImage('escenas/martinmsj.png');
 
-  // Inspecciones de la escena del crimen
+      // Inspecciones de la escena del crimen
+
+
   imagenCajon = loadImage('escenas/cajon.png');
   imagenHoja = loadImage('escenas/hojavacia.jpeg');
-  vistasSimples.silla.imagen = loadImage('escenas/silla.png');
-  vistasSimples.cajafuerte.imagen = loadImage('escenas/cajafuerte.png');
+  imagenSilla = loadImage('escenas/silla.png');
+  imagenCajaFuerte = loadImage('escenas/cajafuerte.png');
 
-  // Carga de los fondos de todas las escenas
-  for (let i = 0; i < escenas.length; i++) {
-    imagenesEscenas[i] = loadImage(escenas[i].archivo);
+     // Carga de los fondos de todas las escenas
+
+  for (let i = 0; i < archivosEscenas.length; i++) {
+    imagenesEscenas[i] = loadImage(archivosEscenas[i]);
   }
 }
 
@@ -250,6 +271,260 @@ function draw() {
   }
 }
 
+// <<<< ARMADO DE LA ESCENA (lógica) <<<<
+
+function algunObjetoRevisado() {
+  return revisadoCajon || revisadoSilla || revisadoCajaFuerte;
+}
+
+function todosLosObjetosRevisados() {
+  return revisadoCajon && revisadoSilla && revisadoCajaFuerte;
+}
+
+// Devuelve la imagen del retrato según el nombre del hablante
+
+function retratoDe(nombre) {
+  if (nombre === "policia") {
+    return retratoPolicia;
+  } else if (nombre === "johndavis") {
+    return retratoJohn;
+  } else if (nombre === "guardia") {
+    return retratoGuardia;
+  } else if (nombre === "laura") {
+    return retratoLaura;
+  } else if (nombre === "martin") {
+    return retratoMartin;
+  }
+  return null;
+}
+
+function dibujarEscenaJuego(indice) {
+  if (vistaObjeto === "cajon") {
+    dibujarVistaCajon();
+    return;
+  }
+  if (vistaObjeto === "carta") {
+    dibujarVistaCarta();
+    return;
+  }
+  if (vistaObjeto === "silla") {
+    dibujarVistaSimple(imagenSilla, textoSilla);
+    return;
+  }
+  if (vistaObjeto === "cajafuerte") {
+    dibujarVistaSimple(imagenCajaFuerte, textoCajaFuerte);
+    return;
+  }
+
+  image(imagenesEscenas[indice], 0, 0, 800, 450);
+
+  manejarSonidoAmbiente(indice);
+  dibujarCajaDeTexto();
+
+  let retrato = retratoDe(hablantesEscenas[indice]);
+  let anchoRetrato = 0;
+
+  if (indice === 3) {
+    if (todosLosObjetosRevisados()) {
+      dibujarComentarioGuardia();
+    } else if (!algunObjetoRevisado()) {
+      if (retrato !== null) {
+        anchoRetrato = dibujarRetrato(retrato, 30, 330);
+      }
+      escribirTextoProgresivo(indice, anchoRetrato);
+    }
+    dibujarObjetosEscena();
+    return;
+  }
+
+  if (retrato !== null) {
+    anchoRetrato = dibujarRetrato(retrato, 30, 330);
+  }
+
+  escribirTextoProgresivo(indice, anchoRetrato);
+
+  if (letrasMostradas >= textosEscenas[indice].length) {
+    dibujarOpcionesEscena(indice);
+  }
+}
+
+// <<<   OPCIONES, OBJETOS Y RECORRIDO (lógica) <<<<
+
+// Dice si el mouse está sobre un texto clickeable
+
+function mouseSobreOpcion(texto, x, y) {
+  textSize(16);
+  let ancho = textWidth(texto) + 30;
+  return mouseX > x && mouseX < x + ancho &&
+         mouseY > y && mouseY < y + 30;
+}
+
+// Una opción se oculta si lleva a alguien que ya interrogamos.
+// Así el jugador no puede ir y venir entre Laura y Martín para siempre.
+
+
+function opcionVisible(k) {
+  if (opcionSiguiente[k] === 8 && lauraInterrogada) {
+    return false;
+  }
+  if (opcionSiguiente[k] === 10 && martinInterrogado) {
+    return false;
+  }
+  return true;
+}
+
+function dibujarOpcionesEscena(escena) {
+  for (let k = 0; k < opcionEscena.length; k++) {
+    if (opcionEscena[k] === escena && opcionVisible(k)) {
+      dibujarOpcionSuelta(opcionTexto[k], opcionX[k], opcionY[k]);
+    }
+  }
+}
+
+function revisarClickEnOpciones(escena) {
+  for (let k = 0; k < opcionEscena.length; k++) {
+    if (opcionEscena[k] === escena && opcionVisible(k)) {
+      if (mouseSobreOpcion(opcionTexto[k], opcionX[k], opcionY[k])) {
+        irAEscena(opcionSiguiente[k]);
+        return;
+      }
+    }
+  }
+}
+
+function irAEscena(siguiente) {
+  if (siguiente === 0 && escenaActual >= 14) {
+
+    // Al terminar un final se vuelve al menú y se reinicia todo
+
+    reiniciarJuego();
+    pantallaActual = "menu";
+  } else {
+    escenaActual = siguiente;
+    letrasMostradas = 0;
+
+    // Guardamos a quién ya interrogamos
+
+    if (siguiente === 8) {
+      lauraInterrogada = true;
+    } else if (siguiente === 10) {
+      martinInterrogado = true;
+    }
+  }
+}
+
+function reiniciarJuego() {
+  escenaActual = 0;
+  letrasMostradas = 0;
+  letrasIntro = 0;
+  vistaObjeto = "";
+  revisadoCajon = false;
+  revisadoSilla = false;
+  revisadoCajaFuerte = false;
+  lauraInterrogada = false;
+  martinInterrogado = false;
+}
+
+function revisarClickEnObjetos() {
+  for (let i = 0; i < objetoTexto.length; i++) {
+    if (mouseSobreOpcion(objetoTexto[i], objetoX[i], objetoY[i])) {
+      vistaObjeto = objetoAbre[i];
+      if (objetoAbre[i] === "cajon") {
+        revisadoCajon = true;
+      } else if (objetoAbre[i] === "silla") {
+        revisadoSilla = true;
+      } else if (objetoAbre[i] === "cajafuerte") {
+        revisadoCajaFuerte = true;
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
+function revisarClickEnVuelta(x, y) {
+  return mouseX > x && mouseX < x + 150 && mouseY > y && mouseY < y + 35;
+}
+
+// <<<<<<< CLICKS   <<<
+
+function mousePressed() {
+  if (pantallaActual === "menu") {
+    revisarClick(menuX, menuY, menuDestino);
+  } else if (pantallaActual === "descripcion" || pantallaActual === "creditos" || pantallaActual === "salir") {
+    revisarClick(volverX, volverY, volverDestino);
+  } else if (pantallaActual === "intro") {
+    if (letrasIntro < textoIntro.length) {
+      letrasIntro = textoIntro.length;
+    } else {
+      pantallaActual = "juego";
+      escenaActual = 0;
+      letrasMostradas = 0;
+    }
+  } else if (pantallaActual === "juego") {
+    if (vistaObjeto === "cajon") {
+      if (mouseSobreOpcion("Ver carta", 235, 390)) {
+        vistaObjeto = "carta";
+      } else if (revisarClickEnVuelta(620, 400)) {
+        vistaObjeto = "";
+      }
+      return;
+    }
+    if (vistaObjeto === "carta") {
+      if (revisarClickEnVuelta(30, 400)) {
+        vistaObjeto = "cajon";
+      }
+      return;
+    }
+    if (vistaObjeto === "silla" || vistaObjeto === "cajafuerte") {
+      if (revisarClickEnVuelta(620, 400)) {
+        vistaObjeto = "";
+      }
+      return;
+    }
+
+    if (letrasMostradas < textosEscenas[escenaActual].length) {
+
+      // Primer click: se completa el texto de golpe
+
+      letrasMostradas = textosEscenas[escenaActual].length;
+    } else if (escenaActual === 3) {
+      let tocoObjeto = revisarClickEnObjetos();
+      if (!tocoObjeto && todosLosObjetosRevisados()) {
+        let anchoRetrato = calcularAnchoRetrato(retratoJohn);
+        if (mouseSobreOpcion("Hablar con el guardia", 30 + anchoRetrato + 20, 390)) {
+          irAEscena(4);
+        }
+      }
+    } else {
+      revisarClickEnOpciones(escenaActual);
+    }
+  }
+}
+
+function revisarClick(xs, ys, destinos) {
+  for (let i = 0; i < destinos.length; i++) {
+    let dentro = mouseX > xs[i] && mouseX < xs[i] + 260 &&
+                 mouseY > ys[i] && mouseY < ys[i] + 35;
+    if (dentro) {
+      if (destinos[i] === "menu") {
+        reiniciarJuego();
+      }
+      pantallaActual = destinos[i];
+    }
+  }
+}
+
+// FIN DE LA PARTE DE IVÁN <<<
+
+//  PARTE DE ROCÍO: la interfaz y el ambiente                       
+//   Pantallas del menú, cómo se ven los textos, retratos, botones,  
+//  las vistas de cerca (cajón, carta, silla, caja fuerte) y el     
+//  sonido ambiente de lluvia.                                      
+
+
+// ===================== PANTALLAS DEL MENÚ =====================
+
 function dibujarMenu() {
   image(imgMenu, 0, 0, 800, 450);
   textFont(fuenteTitulo);
@@ -258,24 +533,23 @@ function dibujarMenu() {
   textSize(48);
   text("SILENCIO", 40, 50);
   text("ROJO", 40, 100);
-  dibujarBotones(botonesMenu);
+  dibujarBotones(menuTexto, menuX, menuY);
 }
 
-function dibujarBotones(lista) {
+function dibujarBotones(textos, xs, ys) {
   textFont(fuenteBotones);
   textSize(22);
   let indiceEncima = -1;
-  for (let i = 0; i < lista.length; i++) {
-    let boton = lista[i];
-    let mouseEncima = mouseX > boton.x && mouseX < boton.x + 260 &&
-                      mouseY > boton.y && mouseY < boton.y + 35;
+  for (let i = 0; i < textos.length; i++) {
+    let mouseEncima = mouseX > xs[i] && mouseX < xs[i] + 260 &&
+                      mouseY > ys[i] && mouseY < ys[i] + 35;
     if (mouseEncima) {
       indiceEncima = i;
       fill(242, 163, 58);
-      text("▶ " + boton.texto, boton.x, boton.y);
+      text("▶ " + textos[i], xs[i], ys[i]);
     } else {
       fill(255, 255, 255);
-      text(boton.texto, boton.x, boton.y);
+      text(textos[i], xs[i], ys[i]);
     }
   }
   if (indiceEncima !== -1 && indiceEncima !== botonAnterior) {
@@ -298,7 +572,7 @@ function dibujarDescripcion() {
   let historia = "Sos John Davis, un detective privado que se dedica a los casos más difíciles. Ricardo Alonso apareció muerto en su oficina. ¿Vas a descubrir quién miente?\n\nCómo jugar: hacé click en las opciones o zonas interactivas para tomar decisiones.";
   text(historia, 40, 90, 720, 300);
 
-  dibujarBotones(botonVolver);
+  dibujarBotones(volverTexto, volverX, volverY);
 }
 
 function dibujarCreditos() {
@@ -314,13 +588,13 @@ function dibujarCreditos() {
   textSize(16);
   textAlign(CENTER, TOP);
   text("Aventura gráfica de misterio y cine negro.\n\n" +
-                      "Desarrollado por:\nIvan Lencina(122752/3) y Rocio Arcuri(125514/3)\n\n" +
-                      "Docente a cargo: Matias Jauregui Lorda de la comision 2\n\n" +
-                      "Generación de imágenes: ChatGPT\n\n" +
-                      "¡Gracias por jugar!", 400, 110);
+       "Desarrollado por:\nIvan Lencina(122752/3) y Rocio Arcuri(125514/3)\n\n" +
+       "Docente a cargo: Matias Jauregi Lorda de la comision 2\n\n" +
+       "Generación de imágenes: ChatGPT\n\n" +
+       "¡Gracias por jugar!", 400, 110);
 
   textAlign(LEFT, TOP);
-  dibujarBotones(botonVolver);
+  dibujarBotones(volverTexto, volverX, volverY);
 }
 
 function dibujarSalir() {
@@ -331,7 +605,7 @@ function dibujarSalir() {
   textSize(36);
   text("Gracias por jugar", 400, 200);
   textAlign(LEFT, TOP);
-  dibujarBotones(botonVolver);
+  dibujarBotones(volverTexto, volverX, volverY);
 }
 
 function dibujarIntro() {
@@ -354,66 +628,12 @@ function dibujarIntro() {
   }
 }
 
-function algunObjetoRevisado() {
-  return objetosRevisados.cajon || objetosRevisados.silla || objetosRevisados.cajafuerte;
-}
+//  AMBIENTE Y CAJA DE TEXTO <<<<
 
-function todosLosObjetosRevisados() {
-  return objetosRevisados.cajon && objetosRevisados.silla && objetosRevisados.cajafuerte;
-}
-
-function dibujarEscenaJuego(indice) {
-  let datos = escenas[indice];
-
-  if (vistaObjeto === "cajon") {
-    dibujarVistaCajon();
-    return;
-  }
-  if (vistaObjeto === "carta") {
-    dibujarVistaCarta();
-    return;
-  }
-  if (vistaObjeto === "silla" || vistaObjeto === "cajafuerte") {
-    dibujarVistaSimple(vistasSimples[vistaObjeto]);
-    return;
-  }
-
-  image(imagenesEscenas[indice], 0, 0, 800, 450);
-
-  manejarSonidoAmbiente(datos);
-  dibujarCajaDeTexto();          
-
-  if (indice === 3) {
-    if (todosLosObjetosRevisados()) {
-      dibujarComentarioGuardia();
-    } else if (!algunObjetoRevisado()) {
-      let anchoRetrato = 0;
-      if (datos.hablante && imagenesRetratos[datos.hablante]) {
-        anchoRetrato = dibujarRetrato(imagenesRetratos[datos.hablante], 30, 330);
-      }
-      escribirTextoProgresivo(datos, anchoRetrato);
-    }
-    dibujarObjetosEscena(datos);
-    return;
-  }
-
-  let anchoRetrato = 0;
-  if (datos.hablante && imagenesRetratos[datos.hablante]) {
-    anchoRetrato = dibujarRetrato(imagenesRetratos[datos.hablante], 30, 330);
-  }
-
-  escribirTextoProgresivo(datos, anchoRetrato);
-
-  if (letrasMostradas >= datos.texto.length) {
-    dibujarOpcionesEscena(datos.opciones);
-    dibujarObjetosEscena(datos);
-  }
-}
-
-function manejarSonidoAmbiente(datos) {
-  if (datos.tieneLluvia && !sonidoLluvia.isPlaying()) {
+function manejarSonidoAmbiente(indice) {
+  if (lluviaEscenas[indice] && !sonidoLluvia.isPlaying()) {
     sonidoLluvia.loop();
-  } else if (!datos.tieneLluvia && sonidoLluvia.isPlaying()) {
+  } else if (!lluviaEscenas[indice] && sonidoLluvia.isPlaying()) {
     sonidoLluvia.stop();
   }
 }
@@ -442,11 +662,12 @@ function dibujarRetrato(retrato, x, yBase) {
   return anchoCalculado;
 }
 
-function escribirTextoProgresivo(datos, anchoRetrato) {
-  if (frameCount % 2 === 0 && letrasMostradas < datos.texto.length) {
+function escribirTextoProgresivo(indice, anchoRetrato) {
+  let texto = textosEscenas[indice];
+  if (frameCount % 2 === 0 && letrasMostradas < texto.length) {
     letrasMostradas++;
   }
-  let textoVisible = datos.texto.substring(0, letrasMostradas);
+  let textoVisible = texto.substring(0, letrasMostradas);
   let xTexto = anchoRetrato > 0 ? (30 + anchoRetrato + 20) : 35;
   let anchoTexto = 780 - xTexto;
   textFont(fuenteBotones);
@@ -456,74 +677,50 @@ function escribirTextoProgresivo(datos, anchoRetrato) {
   text(textoVisible, xTexto, 345, anchoTexto, 100);
 }
 
-function dibujarOpcionesEscena(opciones) {
+//  LO QUE SE VE DE LAS OPCIONES Y OBJETOS <<<<
+
+// Dibuja un texto clickeable (resaltado si el mouse está encima)
+
+function dibujarOpcionSuelta(texto, x, y) {
   textFont(fuenteBotones);
   textSize(16);
-  for (let i = 0; i < opciones.length; i++) {
-    let opcion = opciones[i];
-    let ancho = textWidth(opcion.texto) + 30;
-    let mouseEncima = mouseX > opcion.x && mouseX < opcion.x + ancho &&
-                       mouseY > opcion.y && mouseY < opcion.y + 30;
-    fill(mouseEncima ? color(242, 163, 58) : color(255, 255, 255));
-    text((mouseEncima ? "▶ " : "   ") + opcion.texto, opcion.x, opcion.y);
-  }
+  let ancho = textWidth(texto) + 30;
+  let mouseEncima = mouseX > x && mouseX < x + ancho &&
+                    mouseY > y && mouseY < y + 30;
+  fill(mouseEncima ? color(242, 163, 58) : color(255, 255, 255));
+  text((mouseEncima ? "▶ " : "   ") + texto, x, y);
 }
 
 function dibujarComentarioGuardia() {
-  let anchoRetrato = dibujarRetrato(imagenesRetratos["johndavis"], 30, 330);
+  let anchoRetrato = dibujarRetrato(retratoJohn, 30, 330);
   textFont(fuenteBotones);
   fill(230, 220, 200);
   textAlign(LEFT, TOP);
   textSize(16);
   text("Capaz el guardia tendrá algo que decir... habrá visto algo esa noche.", 30 + anchoRetrato + 20, 345, 780 - (30 + anchoRetrato + 20), 40);
-  dibujarOpcionesEscena([ { texto: "Hablar con el guardia", x: 30 + anchoRetrato + 20, y: 390, siguiente: 4 } ]);
+  dibujarOpcionSuelta("Hablar con el guardia", 30 + anchoRetrato + 20, 390);
 }
 
-function dibujarObjetosEscena(datos) {
-  if (!datos.objetos) return;
-  textFont(fuenteBotones);
-  textSize(16);
-  for (let i = 0; i < datos.objetos.length; i++) {
-    let objeto = datos.objetos[i];
-    let ancho = textWidth(objeto.texto) + 30;
-    let mouseEncima = mouseX > objeto.x && mouseX < objeto.x + ancho &&
-                       mouseY > objeto.y && mouseY < objeto.y + 30;
-    fill(mouseEncima ? color(242, 163, 58) : color(255, 255, 255));
-    text((mouseEncima ? "▶ " : "   ") + objeto.texto, objeto.x, objeto.y);
+function dibujarObjetosEscena() {
+  for (let i = 0; i < objetoTexto.length; i++) {
+    dibujarOpcionSuelta(objetoTexto[i], objetoX[i], objetoY[i]);
   }
 }
 
-function revisarClickEnObjetos(datos) {
-  if (!datos.objetos) return false;
-  textSize(16);
-  for (let i = 0; i < datos.objetos.length; i++) {
-    let objeto = datos.objetos[i];
-    let ancho = textWidth(objeto.texto) + 30;
-    let dentro = mouseX > objeto.x && mouseX < objeto.x + ancho &&
-                 mouseY > objeto.y && mouseY < objeto.y + 30;
-    if (dentro) {
-      vistaObjeto = objeto.abre;
-      if (objetosRevisados.hasOwnProperty(objeto.abre)) {
-        objetosRevisados[objeto.abre] = true;
-      }
-      return true;
-    }
-  }
-  return false;
-}
+// VISTAS DE CERCA <<<<
 
 function dibujarVistaCajon() {
   image(imagenCajon, 0, 0, 800, 450);
   dibujarCajaDeTexto();
-  let anchoRetrato = dibujarRetrato(imagenesRetratos["johndavis"], 30, 330);
+  let anchoRetrato = dibujarRetrato(retratoJohn, 30, 330);
   textFont(fuenteBotones);
   fill(230, 220, 200);
   textAlign(LEFT, TOP);
   textSize(16);
   text("Entre los papeles hay una carta que llama la atención.", 30 + anchoRetrato + 20, 345, 780 - (30 + anchoRetrato + 20), 40);
 
-  dibujarOpcionesEscena([ { texto: "Ver carta", x: 235, y: 390 } ]);
-  dibujarBotonVolverVista(620, 400); 
+  dibujarOpcionSuelta("Ver carta", 235, 390);
+  dibujarBotonVolverVista(620, 400);
 }
 
 function dibujarVistaCarta() {
@@ -534,7 +731,7 @@ function dibujarVistaCarta() {
 
   let anchoCarta = 420, altoCarta = 320;
   let xCarta = (800 - anchoCarta) / 2;
-  let yCarta = (450 - altoCarta) / 2; 
+  let yCarta = (450 - altoCarta) / 2;
   image(imagenHoja, xCarta, yCarta, anchoCarta, altoCarta);
 
   textFont(fuenteBotones);
@@ -546,25 +743,22 @@ function dibujarVistaCarta() {
   text(textoCarta, xCarta + 40, yCarta + 75, anchoCarta - 75, altoCarta - 100);
   textAlign(LEFT, TOP);
 
-  
-  dibujarBotonVolverVista();
+  dibujarBotonVolverVista(30, 400);
 }
 
-function dibujarVistaSimple(datosVista) {
-  image(datosVista.imagen, 0, 0, 800, 450);
+function dibujarVistaSimple(imagen, texto) {
+  image(imagen, 0, 0, 800, 450);
   dibujarCajaDeTexto();
-  let anchoRetrato = dibujarRetrato(imagenesRetratos["johndavis"], 30, 330);
+  let anchoRetrato = dibujarRetrato(retratoJohn, 30, 330);
   textFont(fuenteBotones);
   fill(230, 220, 200);
   textAlign(LEFT, TOP);
   textSize(16);
-  text(datosVista.texto, 30 + anchoRetrato + 20, 345, 780 - (30 + anchoRetrato + 20), 100);
+  text(texto, 30 + anchoRetrato + 20, 345, 780 - (30 + anchoRetrato + 20), 100);
   dibujarBotonVolverVista(620, 400);
 }
 
 function dibujarBotonVolverVista(x, y) {
-  if (x === undefined) x = 30;
-  if (y === undefined) y = 400;
   textFont(fuenteBotones);
   textSize(18);
   let mouseEncima = mouseX > x && mouseX < x + 150 && mouseY > y && mouseY < y + 35;
@@ -572,100 +766,5 @@ function dibujarBotonVolverVista(x, y) {
   text((mouseEncima ? "◀ " : "  ") + "Volver", x, y);
 }
 
-function revisarClickEnVuelta(x, y) {
-  if (x === undefined) x = 30;
-  if (y === undefined) y = 400;
-  return mouseX > x && mouseX < x + 150 && mouseY > y && mouseY < y + 35;
-}
 
-function mousePressed() {
-  if (pantallaActual === "menu") {
-    revisarClick(botonesMenu);
-  } else if (pantallaActual === "descripcion" || pantallaActual === "creditos" || pantallaActual === "salir") {
-    revisarClick(botonVolver);
-  } else if (pantallaActual === "intro") {
-    if (letrasIntro < textoIntro.length) {
-      letrasIntro = textoIntro.length;
-    } else {
-      pantallaActual = "juego";
-      escenaActual = 0;
-      letrasMostradas = 0;
-    }
-  } else if (pantallaActual === "juego") {
-    if (vistaObjeto === "cajon") {
-      textSize(16);
-      let anchoBoton = textWidth("Ver carta") + 30;
-      let mouseEncimaBoton = mouseX > 235 && mouseX < 235 + anchoBoton && mouseY > 390 && mouseY < 420;
-      if (mouseEncimaBoton) {
-        vistaObjeto = "carta";
-      } else if (revisarClickEnVuelta(620, 400)) {
-        vistaObjeto = null;
-      }
-      return;
-    }
-    if (vistaObjeto === "carta") {
-      if (revisarClickEnVuelta()) {
-        vistaObjeto = "cajon";
-      }
-      return;
-    }
-    if (vistaObjeto === "silla" || vistaObjeto === "cajafuerte") {
-      if (revisarClickEnVuelta(620, 400)) {
-        vistaObjeto = null;
-      }
-      return;
-    }
-
-    let datos = escenas[escenaActual];
-    if (letrasMostradas < datos.texto.length) {
-      letrasMostradas = datos.texto.length;
-    } else {
-      let tocoObjeto = revisarClickEnObjetos(datos);
-      if (!tocoObjeto) {
-        if (escenaActual === 3 && todosLosObjetosRevisados()) {
-          let anchoRetrato = calcularAnchoRetrato(imagenesRetratos["johndavis"]);
-          revisarClickEnOpciones([ { texto: "Hablar con el guardia", x: 30 + anchoRetrato + 20, y: 390, siguiente: 4 } ]);
-        } else {
-          revisarClickEnOpciones(datos.opciones);
-        }
-      }
-    }
-  }
-}
-
-function revisarClick(lista) {
-  for (let i = 0; i < lista.length; i++) {
-    let boton = lista[i];
-    let dentro = mouseX > boton.x && mouseX < boton.x + 260 &&
-                 mouseY > boton.y && mouseY < boton.y + 35;
-    if (dentro) {
-      if (boton.destino === "menu") {
-        escenaActual = 0;
-        letrasMostradas = 0;
-        objetosRevisados = { cajon: false, silla: false, cajafuerte: false };
-      }
-      pantallaActual = boton.destino;
-    }
-  }
-}
-
-function revisarClickEnOpciones(opciones) {
-  textSize(16);
-  for (let i = 0; i < opciones.length; i++) {
-    let opcion = opciones[i];
-    let ancho = textWidth(opcion.texto) + 30;
-    let dentro = mouseX > opcion.x && mouseX < opcion.x + ancho &&
-                 mouseY > opcion.y && mouseY < opcion.y + 30;
-    if (dentro) {
-      if (opcion.siguiente === 0) {
-        pantallaActual = "menu";
-        escenaActual = 0;
-        letrasMostradas = 0;
-        objetosRevisados = { cajon: false, silla: false, cajafuerte: false };
-      } else {
-        escenaActual = opcion.siguiente;
-        letrasMostradas = 0;
-      }
-    }
-  }
-}
+//  FIN DE LA PARTE DE ROCÍO 
